@@ -1,0 +1,9 @@
+name,email,phone,company,source,status
+Alice Carter,alice@acme.io,+1-415-555-0101,Acme Inc,Website,New
+Brian Lee,brian.lee@globex.com,+1-415-555-0102,Globex,LinkedIn,Contacted
+Chitra Rao,chitra@northwind.co,+91-98xxxxxx03,Northwind,Referral,Qualified
+Diego Martins,diego@initech.com,,Initech,Cold Email,New
+Eva Nguyen,eva@umbrella.dev,+44-20-7946-0958,Umbrella,Event,Converted
+Faisal Ahmed,faisal@hooli.com,,Hooli,Website,Lost
+Gina Park,gina@vandelay.com,+1-212-555-0166,Vandelay,LinkedIn,Contacted
+Hiro Tanaka,hiro@stark.jp,+81-3-1234-5678,Stark Industries,Referral,Qualified
