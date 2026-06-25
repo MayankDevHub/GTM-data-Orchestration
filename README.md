@@ -13,7 +13,7 @@ Built for the Braahmam International GTM Data Orchestration assignment.
 Real GTM data arrives in inconsistent formats from forms, ad platforms, exports and manual lists. The system focuses on three steps:
 
 1. **Ingest** — accept CSV/Excel uploads from any number of sources in one screen.
-2. **Process** — normalize column names, trim values, validate status, deduplicate by `email + name`, drop rows with no name.
+2. **Process** — normalize column names, trim values, validate status, deduplicate by `email + name` (both within the batch and against existing database records), drop rows with no name.
 3. **Serve** — store clean rows in a single `leads` table and expose KPIs, source mix, status mix, monthly trend, and a searchable/filterable lead table.
 
 The stack is intentionally small so the pipeline (upload → clean → store → analyze) is easy to read end-to-end.
@@ -26,7 +26,8 @@ The stack is intentionally small so the pipeline (upload → clean → store →
    │ (multiple sources)     │     │  • parse (papaparse, │
    └────────────────────────┘     │    xlsx)             │
                                   │  • clean + dedupe    │
-                                  │  • preview           │
+                                  │  • DB dedup check    │
+                                  │  • preview new only  │
                                   └──────────┬───────────┘
                                              │ insert
                                              ▼
@@ -34,6 +35,7 @@ The stack is intentionally small so the pipeline (upload → clean → store →
                                   │ Supabase Postgres    │
                                   │  leads / sources /   │
                                   │  activities          │
+                                  │  + unique index      │
                                   └──────────┬───────────┘
                                              │ select
                                              ▼
@@ -63,6 +65,8 @@ Three tables in the `public` schema.
 | status      | text        | New / Contacted / Qualified / Converted / Lost (default `New`) |
 | created_at  | timestamptz | default `now()`                 |
 
+A unique index (`leads_dedupe_idx`) on `(lower(email), lower(name))` prevents duplicate rows at the database level.
+
 ### `sources`
 | column       | type        | notes        |
 | ------------ | ----------- | ------------ |
@@ -91,8 +95,8 @@ RLS is enabled on all three; policies allow public access (assignment requires n
    - coerce unknown status → `New`
    - dedupe by `(email, name)` within the batch
    - skip rows missing a name
-4. A preview table + counts (parsed / clean / skipped) are shown.
-5. **Save** inserts cleaned rows into `leads` via Supabase.
+4. Existing leads are fetched from the database and filtered out — **preview shows only genuinely new leads** with accurate skipped count.
+5. **Save** inserts only the new leads into `leads` via Supabase.
 6. React Query invalidates the `leads` cache; Dashboard, Leads, and Analytics re-fetch and update.
 
 ## 5. Assumptions
@@ -106,48 +110,49 @@ RLS is enabled on all three; policies allow public access (assignment requires n
 
 ## 6. Setup Instructions
 
-Prerequisites: Node 20+, `bun` (or `npm`), a Supabase project.
+Prerequisites: Node 20+, a Supabase project.
 
 ```bash
-# 1. install
-bun install
+# 1. Install dependencies
+npm install
 
-# 2. env (already provisioned in this Lovable project)
-cp .env.example .env   # then fill the values below
+# 2. Create env file
+cp .env.example .env
+```
 
-# .env
+Fill in your Supabase credentials in `.env`:
+```
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_PUBLISHABLE_KEY=...
 VITE_SUPABASE_PROJECT_ID=...
+```
 
-# 3. apply database migration (one-time)
-#    run the SQL in supabase/migrations/*.sql in the Supabase SQL editor
+```bash
+# 3. Apply database migration (one-time)
+#    Run the SQL in supabase/migrations/*.sql in the Supabase SQL Editor
 
-# 4. start dev server
-bun run dev
+# 4. Start dev server
+npm run dev
 ```
 
 Open http://localhost:8080, go to **Import**, and upload `public/sample-leads.csv`.
 
 ## 7. GitHub Deployment Guide
 
-1. In Lovable, open the **+** menu → **GitHub** → **Connect project**.
-2. Authorize the Lovable GitHub App and pick an org.
-3. Click **Create Repository**. The current code pushes automatically.
-4. Local clone:
+1. Push the project to GitHub.
+2. Local clone:
    ```bash
    git clone https://github.com/<you>/<repo>.git
    cd <repo>
-   bun install
-   bun run dev
+   npm install
+   npm run dev
    ```
-5. Any commit pushed to `main` from local syncs back into Lovable.
 
 ## 8. Vercel Deployment Guide
 
-1. Push the project to GitHub (see above).
+1. Push the project to GitHub.
 2. Go to https://vercel.com/new and import the repository.
-3. Framework preset: **Vite**. Build command: `bun run build` (or `npm run build`). Output dir: `dist`.
+3. Framework preset: **Vite**. Build command: `npm run build`. Output dir: `dist`.
 4. Add environment variables (Settings → Environment Variables):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
